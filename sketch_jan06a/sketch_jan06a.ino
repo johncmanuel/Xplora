@@ -176,6 +176,35 @@ void maneuver(int16_t speedLeft, int16_t speedRight, int16_t ms) {
   Serial.println(" milliseconds");
 }
 
+void moveCarWithJoystick(int16_t x, int16_t y) {
+
+     if (((x == 515 || x==514) && y == 521 || y == 520)) {
+        maneuver(0,0,10);
+        return;
+     }
+        // Forward
+        if (y > 521) {
+        maneuver(200, 200, 10);
+        return;        // Backwards
+        }else if (y < 521){
+       maneuver(-200, -200, 10);
+       return;
+        }
+
+       // Left
+        if(x > 520){
+        maneuver(-200, 200, 10);
+        return;
+        // Right
+          }else if(x < 510){
+        maneuver(200, -200, 10);
+        return;
+       }
+
+       maneuver(0, 0, -1);  //disable servos
+  
+  }
+
 // ========================================
 // IR SENSOR ==============================
 
@@ -209,15 +238,34 @@ void checkObstacles(uint8_t pin, int* out, const char* sensorName) {
           
         startMillisIR = millis();                       
       }
-    delay(2000);
   }
 
 // ========================================
 // LIGHT SENSOR ===========================
 
+// Define LED indications for light sensor
+const uint8_t LED_1 = 5;
+const uint8_t LED_2 = 6;
+
 float volts(int adPin) {
   return float(analogRead(adPin)) * 5.0 / 1024.0;
 }
+
+// ========================================
+// BLUETOOTH RECEIVER =====================
+
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+
+const uint8_t CE_PIN = 7;
+const uint8_t CNS_PIN = 8; 
+
+RF24 radio(CE_PIN, CNS_PIN); // CE, CNS
+
+const byte address[6] = "00001";
+
+int16_t xPos, yPos, sw;
 
 // ========================================
 // MAIN FUNCTIONS =========================
@@ -227,15 +275,22 @@ void setup() {
   
   playStartUpSound();
 
+  // Set up infrared sensor
   pinMode(IRInputPin, INPUT);                         
   startMillisIR = millis();
 
-  //photoTransitor
-  pinMode(5, OUTPUT);
-  pinMode(6, OUTPUT);
+  // Set up phototransistor / light sensor
+  pinMode(LED_1, OUTPUT);
+  pinMode(LED_2, OUTPUT);
 
-//  servoLeft.attach(13);
-//  servoRight.attach(12);
+  // Set up bluetooth receiver
+  radio.begin();
+  radio.openReadingPipe(0, address);
+  radio.setPALevel(RF24_PA_MIN);
+  radio.startListening();
+
+  servoLeft.attach(13);
+  servoRight.attach(12);
 
 //  maneuver(200, 200, 2000); //forward 2 seconds
 //  maneuver(-200, -200, 2000); // backward 2 seconds
@@ -246,17 +301,42 @@ void setup() {
 }
 
 void loop() {
+
+  // Run bluetooth commmands
+  if (radio.available()) {
+      int16_t data[2];
+      
+      radio.read(&data, sizeof(data));
+      // 0 - x
+      // 1 - y
+      Serial.print("X: ");
+      Serial.println(data[0]);
+      Serial.print("Y: ");
+      Serial.println(data[1]);
+
+      xPos = data[0];
+      yPos = data[1];
+      
+  }
+    moveCarWithJoystick(xPos, yPos);
+
+  // Run infrared sensor commands
   checkObstacles(IRInputPin, IROutputState, IRSensor);
   checkObstacles(IR_2_InputPin, IR_2_OutputState, IR_2_Sensor);
 
+  // Run phototransistor / light sensor commands
   Serial.print("A3 = ");
   Serial.print(volts(A3));
-  Serial.println(" volts");
+  Serial.println( " volts");
 
-  delay(1000);
+  delay(10);
 
-  if(volts(A3) <= 0.1) {
-    digitalWrite(5, HIGH);
-    digitalWrite(6, HIGH);
-  }
+  // Turn on LEDs if light levels are low
+  if(volts(A3) <= 0.2) {
+    digitalWrite(LED_1, HIGH);
+    digitalWrite(LED_2, HIGH);
+  } else {
+    digitalWrite(LED_1, LOW);
+    digitalWrite(LED_2, LOW);
+   }
 }
