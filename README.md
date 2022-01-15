@@ -15,4 +15,4 @@ A remote-controlled car designed for exploring unknown and risky environments. G
    1. https://www.parallax.com/package/brobotics-with-the-board-of-education-shield-for-arduino/
 
 ## Presentation Slides
-https://docs.google.com/presentation/d/1GXjmx-cizyWXwN5bkxnA40AgGVpAdgFClJAhOuskXjQ/edit?usp=sharing
+https://docs.google.com/presentation/d/1UQdeFcPyBXSFmKE082M4JFuH2AKtKon-rYX7wFZ69v0/edit?usp=sharing
